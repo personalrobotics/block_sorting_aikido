@@ -30,12 +30,16 @@ include_directories(${libherb_INCLUDE_DIRS})
 find_package(pr_ordata REQUIRED)
 include_directories(${pr_ordata_INCLUDE_DIRS})
 
+find_package(tabletop_perception_tools REQUIRED)
+include_directories(${tabletop_perception_tools_INCLIDE_DIRS})
 # ===============================================================================
 # Executables
 #
 
 add_executable(block_sorting
     src/block_sorting.cpp
+    src/BlockDetectorModule.cpp
+    src/BlockDetectorModule.hpp
 )
 
 target_link_libraries(block_sorting

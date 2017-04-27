@@ -10,6 +10,7 @@
 #include <tclap/CmdLine.h>
 #include <aikido/perception/AprilTagsModule.hpp>
 #include <aikido/perception/YamlAprilTagsDatabase.hpp>
+#include "BlockDetectorModule.hpp"
 
 static const double detectionTimeout{5.};
 
@@ -51,8 +52,17 @@ int main(int argc, char** argv)
     atDetector.detectObjects(env, ros::Duration(detectionTimeout));
     dart::dynamics::SkeletonPtr table = env->getSkeleton("table127");
 
+    BlockDetectorModule blockDetector(
+        nh,
+        "tools_server/find_blocks", 
+        "head/kinect2/qhd/points",
+        resourceRetriever,
+        "package://pr_ordata/data/objects/blocks.urdf",
+        "herb_frame",
+        herbBaseNode);
+
     if (table == nullptr){
-    	dtwarn << "[BlockSorting] Cannot find table  in the scene." << std::endl;
+    	dtwarn << "[BlockSorting] Cannot find the table in the scene." << std::endl;
  		return 1;
     }
 
