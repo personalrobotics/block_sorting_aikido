@@ -1,99 +1,136 @@
-#include <Eigen/Dense>
-#include <aikido/statespace/dart/MetaSkeletonStateSpace.hpp>
-#include <aikido/constraint/TSR.hpp>
-#include <dart/dart.hpp>
 #include <iostream>
-#include <libherb/herb.hpp>
-#include <aikido/rviz/InteractiveMarkerViewer.hpp>
-#include <aikido/util/CatkinResourceRetriever.hpp>
-#include <dart/utils/urdf/DartLoader.hpp>
-#include <tclap/CmdLine.h>
+#include <aikido/constraint/TSR.hpp>
+#include <aikido/io/CatkinResourceRetriever.hpp>
 #include <aikido/perception/AprilTagsModule.hpp>
+// #include <aikido/perception/BlockDetectorModule.hpp>
 #include <aikido/perception/YamlAprilTagsDatabase.hpp>
+#include <aikido/rviz/InteractiveMarkerViewer.hpp>
+#include <aikido/statespace/dart/MetaSkeletonStateSpace.hpp>
+#include <boost/program_options.hpp>
+#include <dart/dart.hpp>
+#include <dart/utils/urdf/DartLoader.hpp>
+#include <Eigen/Dense>
+#include <libherb/herb.hpp>
+#include <tabletop_perception_tools/Block.h>
+#include <pr_tsr/block.hpp>
+
 #include "BlockDetectorModule.hpp"
+
+namespace po = boost::program_options;
+
+static const std::string topicName("block_detector_sample");
+static const std::string herbFrameName("herb_frame");
+static const std::string baseFrameName("map");
 
 static const double detectionTimeout{5.};
 
+
+const dart::dynamics::SkeletonPtr makeBodyFromURDF(
+    const std::string& uri,
+    const Eigen::Isometry3d& transform)
+{
+  // Resolves package:// URIs by emulating the behavior of 'catkin_find'.
+  const auto resourceRetriever =
+      std::make_shared<aikido::io::CatkinResourceRetriever>();
+
+  dart::utils::DartLoader urdfLoader;
+  const dart::dynamics::SkeletonPtr skeleton = urdfLoader.parseSkeleton(
+      uri, resourceRetriever);
+
+  if (!skeleton) {
+    throw std::runtime_error("unable to load '" + uri + "'");
+  }
+
+  dynamic_cast<dart::dynamics::FreeJoint*>(skeleton->getJoint(0))->setTransform(transform);
+
+  return skeleton;
+}
+
+
 int main(int argc, char** argv)
 {
+  // Default options for flags
+  bool herbSim = false;
+  bool perceptionSim = false;
 
-	// Loading HERB
-	herb::Herb robot;
-	dart::dynamics::SkeletonPtr robotSkeleton = robot.getSkeleton();
+  po::options_description po_desc("Block Sorting Options");
+  po_desc.add_options()
+    ("help", "produce help message")
+    ("herbsim,h", po::bool_switch(&herbSim), "Run HERB in simulation")
+    ("perceptionsim,p", po::bool_switch(&perceptionSim), "Run perception in simulation")
+  ;
 
-	// Loading Env
-	dart::simulation::WorldPtr env(new dart::simulation::World);
+  po::variables_map vm;
+  po::store(po::parse_command_line(argc, argv, po_desc), vm);
+  po::notify(vm);
 
-	// Getting the active manipulator
+  if (vm.count("help")) {
+    std::cout << po_desc << std::endl;
+    return 1;
+  }
 
-	/* Initial Perception (Only real perception is allowed)*/
-		// Getting the table from AprilTag
+  std::cout << "Starting ROS node." << std::endl;
+  ros::init(argc, argv, topicName);
+  ros::NodeHandle nodeHandle("~");
 
-	using aikido::perception::YamlAprilTagsDatabase;
+  // Loading HERB
+  herb::Herb robot(true);
+  dart::dynamics::SkeletonPtr robotSkeleton = robot.getSkeleton();
 
-	ros::NodeHandle nh("~");
-	dart::dynamics::BodyNode* herbBaseNode =
-		robotSkeleton->getBodyNode("herb_frame");
+  // Start the RViz viewer.
+  aikido::rviz::InteractiveMarkerViewer viewer(topicName, baseFrameName);
+  std::cout << "Starting viewer. Please subscribe to the '" << topicName
+            << "' InteractiveMarker topic in RViz." << std::endl;
 
-	const auto resourceRetriever =
-        std::make_shared<aikido::util::CatkinResourceRetriever>();
-    const std::string configDataURI(
-        "package://pr_ordata/data/objects/aikido_tag_data.json");
-    std::shared_ptr<YamlAprilTagsDatabase> yamlLoader(
-        new YamlAprilTagsDatabase(resourceRetriever, configDataURI));
-    aikido::perception::AprilTagsModule atDetector(
-        nh,
-        "/apriltags/marker_array",
-        yamlLoader,
-        resourceRetriever,
-        "herb_frame",
-        herbBaseNode);
+  // Add Herb to the viewer.
+  // viewer.addSkeleton(robotSkeleton);
 
-    atDetector.detectObjects(env, ros::Duration(detectionTimeout));
-    dart::dynamics::SkeletonPtr table = env->getSkeleton("table127");
+  dart::simulation::WorldPtr env(new dart::simulation::World);
 
-    BlockDetectorModule blockDetector(
-        nh,
-        "tools_server/find_blocks", 
-        "head/kinect2/qhd/points",
-        resourceRetriever,
-        "package://pr_ordata/data/objects/blocks.urdf",
-        "herb_frame",
-        herbBaseNode);
+  dart::dynamics::BodyNode* herbBaseNode =
+      robotSkeleton->getBodyNode(herbFrameName);
 
-    if (table == nullptr){
-    	dtwarn << "[BlockSorting] Cannot find the table in the scene." << std::endl;
- 		return 1;
-    }
+  const auto resourceRetriever =
+      std::make_shared<aikido::io::CatkinResourceRetriever>();
 
-    	// Snap the table onto the ground
+  aikido::perception::BlockDetectorModule blockDetector(
+      nodeHandle,
+      "/tools_server/find_blocks",
+      "/multisense/image_points2_color", // "head/kinect2/qhd/points"
+      resourceRetriever,
+      "package://pr_ordata/data/objects/block.urdf",
+      herbFrameName,
+      herbBaseNode);
 
-    	// Find the blocks and the bins
+  blockDetector.detectObjects(env, ros::Duration(detectionTimeout));
 
-    /* Main loop and planning pipeline */
+  viewer.setAutoUpdate(true);
 
-    bool running = true;
+  // bool running = true;
 
-    bool previously_found_blocks = true;
-    std::vector<dart::dynamics::SkeletonPtr> blocks;
+  // bool previously_found_blocks = true;
+  // std::vector<dart::dynamics::SkeletonPtr> blocks;
 
-    while(running) {
-    	
-    	// Remove all blocks in the current env
+  // while(running) {
+    
+  //   // Remove all blocks in the current env
 
-    	// Redetect the blocks on the table
-    	// blocks = block_detetor.detect_objects(env, ros::Duration(detectionTimeout));
-    	if (blocks.size() < 1){
-    		// Waiting for a bit
-    		continue;
-    	}
+  //   // Redetect the blocks on the table
+  //   // blocks = block_detetor.detect_objects(env, ros::Duration(detectionTimeout));
+  //   if (blocks.size() < 1){
+  //     // Waiting for a bit
+  //     continue;
+  //   }
 
-    	// Robot grab the block
+  //   // Robot grab the block
 
-    	// Robot verify the block has been grabbed
+  //   // Robot verify the block has been grabbed
 
-    	// Robot place the block into the bin.
-    	
-    }
-	return 0;
+  //   // Robot place the block into the bin.
+    
+  // }
+
+  std::cout << "Press <Ctrl> + C to exit." << std::endl;
+  ros::spin();
+  return 0;
 }
