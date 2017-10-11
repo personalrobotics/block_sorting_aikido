@@ -21,19 +21,21 @@ namespace perception{
 class BlockDetectorModule : public PerceptionModule
 {
 public:
-  /// Construct an AprilTags receiver that subscribes to the specified topic
-  /// where AprilTag information is being published as a
-  /// \c visualization_msg::MarkerArray, uses a database loader for
-  /// configuration information related to tags and obtains the desired
-  /// transformation frame for the object pose.
+  /// Construct a BlockDetector receiver that calls
+  /// \c tabletop_perception_tools::FindBlocks and receives a vector of
+  /// \c tabletop_perception_tools::Block that contains information of
+  /// detected color blocks including the transformation frame and
+  /// the object pose.
   ///
   /// \param[in] node The node handle to be passed to the detector
-  /// \param[in] markerTopic The name of the topic on which april tags
-  /// information is being published
-  /// \param[in] configData The pointer to some configuration data loader
+  /// \param[in] serviceName The name of the service which is linked to
+  /// the service callback find_blocks
+  /// \param[in] cloudTopic The name of the topic on which the registered
+  /// point cloud information is being published
   /// \param[in] resourceRetriever A DART retriever for resources related to
   /// config files and models and so on
-  /// \param[in] destinationFrame The desired TF for the detections
+  /// \param[in] blockUri The resource path for the urdf file of color blocks
+  /// \param[in] referenceFrameId The base TF of the robot
   /// \param[in] referenceLink A link on the robot with respect to which the
   /// pose is transformed
   BlockDetectorModule(

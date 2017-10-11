@@ -171,8 +171,6 @@ bool BlockDetectorModule::detectObjects(const dart::simulation::WorldPtr& env,
     Eigen::Isometry3d skel_pose = frame_pose * blockPose;
     Eigen::Isometry3d link_offset = mReferenceLink->getWorldTransform();
     skel_pose = link_offset * skel_pose;
-
-    //TODO Snapping it to the table
     
     dart::dynamics::SkeletonPtr blockSkeletonPtr =
         makeBodyFromURDF(mBlockUri, skel_pose);

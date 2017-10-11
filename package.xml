@@ -10,14 +10,11 @@
   <author email="pengjuj@cmu.edu">penjuj</author>
   <author email="yskim@cs.uw.edu">Youngsun Kim</author>  
 
+  <buildtool_depend>cmake</buildtool_depend>
   <depend>aikido</depend>
   <depend>libherb</depend>
-  <exec_depend>catkin</exec_depend>
-  <buildtool_depend>cmake</buildtool_depend>
   <depend>pr_ordata</depend>
   <depend>tabletop_perception_tools</depend>
+  <exec_depend>catkin</exec_depend>
   
-  <export>
-    <build_type>cmake</build_type>
-  </export>
 </package>
