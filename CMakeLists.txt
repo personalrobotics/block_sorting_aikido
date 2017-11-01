@@ -11,14 +11,19 @@ find_package(DART REQUIRED)
 include_directories(${DART_INCLUDE_DIRS})
 
 find_package(aikido REQUIRED COMPONENTS
+  common
   constraint
+  control
+  control_ros
   distance
+  io
   perception
+  control
+  control_ros
   planner_ompl
   planner_parabolic
   rviz
-  statespace
-  util)
+  statespace)
 include_directories(${aikido_INCLUDE_DIRS})
 
 find_package(Eigen3 REQUIRED)
@@ -30,21 +35,26 @@ include_directories(${libherb_INCLUDE_DIRS})
 find_package(pr_ordata REQUIRED)
 include_directories(${pr_ordata_INCLUDE_DIRS})
 
+find_package(Boost COMPONENTS program_options REQUIRED)
+include_directories(${Boost_INCLUDE_DIR})
+
 find_package(tabletop_perception_tools REQUIRED)
 include_directories(${tabletop_perception_tools_INCLIDE_DIRS})
 # ===============================================================================
 # Executables
 #
 
+include_directories(include)
+
 add_executable(block_sorting
     src/block_sorting.cpp
     src/BlockDetectorModule.cpp
-    src/BlockDetectorModule.hpp
 )
 
 target_link_libraries(block_sorting
   ${DART_LIBRARIES}
   ${aikido_LIBRARIES}
+  ${Boost_LIBRARIES}
   libherb)
 
 # ===============================================================================
