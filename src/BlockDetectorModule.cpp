@@ -123,7 +123,7 @@ const dart::dynamics::SkeletonPtr makeBodyFromURDF(const std::string& uri,
 }
 
 
-bool BlockDetectorModule::detectObjects(const dart::simulation::WorldPtr& env, 
+bool BlockDetectorModule::detectObjects(const aikido::planner::WorldPtr& env, 
                                         ros::Duration timeout, 
                                         ros::Time timestamp)
 {

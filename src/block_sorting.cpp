@@ -85,7 +85,8 @@ int main(int argc, char** argv)
   // Add Herb to the viewer.
   // viewer.addSkeleton(robotSkeleton);
 
-  dart::simulation::WorldPtr env(new dart::simulation::World);
+  // Create AIKIDO World
+  aikido::planner::WorldPtr env(new aikido::planner::World("exec"));
 
   dart::dynamics::BodyNode* herbBaseNode =
       robotSkeleton->getBodyNode(herbFrameName);
